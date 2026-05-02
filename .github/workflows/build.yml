@@ -1,0 +1,59 @@
+name: Build PS2PKGConv PKG
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential git wget flex bison libelf-dev libssl-dev texinfo libgmp-dev libmpfr-dev libmpc-dev libtool autoconf automake pkg-config zlib1g-dev
+    
+    - name: Install PS3 SDK
+      run: |
+        cd ~
+        git clone https://github.com/ps3dev/ps3toolchain
+        cd ps3toolchain
+        for f in depends/check-*.sh; do rm -f "$f"; touch "$f"; chmod +x "$f"; done
+        bash toolchain.sh
+        export PS3DEV=$HOME/ps3dev
+        export PATH=$PS3DEV/bin:$PATH
+        echo "PS3DEV=$HOME/ps3dev" >> $GITHUB_ENV
+        echo "PATH=$PS3DEV/bin:$PATH" >> $GITHUB_ENV
+    
+    - name: Build ELF
+      run: |
+        export PS3DEV=$HOME/ps3dev
+        export PATH=$PS3DEV/bin:$PATH
+        cd $GITHUB_WORKSPACE
+        mkdir -p bin
+        powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf
+    
+    - name: Create SELF
+      run: |
+        export PS3DEV=$HOME/ps3dev
+        export PATH=$PS3DEV/bin:$PATH
+        cd $GITHUB_WORKSPACE
+        make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
+    
+    - name: Create PKG
+      run: |
+        export PS3DEV=$HOME/ps3dev
+        export PATH=$PS3DEV/bin:$PATH
+        cd $GITHUB_WORKSPACE
+        package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv.pkg
+    
+    - name: Upload PKG
+      uses: actions/upload-artifact@v4
+      with:
+        name: PS2PKGConv
+        path: PS2PKGConv.pkg
