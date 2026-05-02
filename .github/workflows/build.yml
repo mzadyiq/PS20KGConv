@@ -13,41 +13,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install dependencies
+    - name: Install PowerPC Cross-Compiler
       run: |
         sudo apt update
-        sudo apt install -y build-essential git wget flex bison libelf-dev libssl-dev texinfo libgmp-dev libmpfr-dev libmpc-dev libtool autoconf automake pkg-config zlib1g-dev
-    
-    - name: Install PS3 SDK
-      run: |
-        cd ~
-        git clone https://github.com/ps3dev/ps3toolchain
-        cd ps3toolchain
-        for f in depends/check-*.sh; do rm -f "$f"; touch "$f"; chmod +x "$f"; done
-        export PS3DEV=$HOME/ps3dev
-        export PATH=$PS3DEV/bin:$PATH
-        sed -i 's|/ppu|'$HOME'/ps3dev/ppu|g' scripts/001-binutils-PPU.sh
-        sed -i 's|/ppu|'$HOME'/ps3dev/ppu|g' scripts/002-gcc-newlib-PPU.sh
-        sed -i 's|/ppu|'$HOME'/ps3dev/ppu|g' scripts/006-gcc-newlib-SPU.sh
-        bash toolchain.sh
-        echo "PS3DEV=$HOME/ps3dev" >> $GITHUB_ENV
-        echo "PATH=$PS3DEV/bin:$PATH" >> $GITHUB_ENV
+        sudo apt install -y gcc-powerpc64-linux-gnu python3
     
     - name: Build ELF
       run: |
         cd $GITHUB_WORKSPACE
         mkdir -p bin
-        powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf
+        powerpc64-linux-gnu-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf -static
     
-    - name: Create SELF
+    - name: Create SELF + PKG
       run: |
         cd $GITHUB_WORKSPACE
-        make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
-    
-    - name: Create PKG
-      run: |
-        cd $GITHUB_WORKSPACE
-        package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv.pkg
+        python3 build_pkg_v2.py
+        ls -la PS2PKGConv.pkg
     
     - name: Upload PKG
       uses: actions/upload-artifact@v4
