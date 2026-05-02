@@ -16,7 +16,7 @@ jobs:
     - name: Install PowerPC Cross-Compiler
       run: |
         sudo apt update
-        sudo apt install -y gcc-powerpc64-linux-gnu python3
+        sudo apt install -y gcc-powerpc64-linux-gnu
     
     - name: Build ELF
       run: |
@@ -24,14 +24,8 @@ jobs:
         mkdir -p bin
         powerpc64-linux-gnu-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf -static
     
-    - name: Create SELF + PKG
-      run: |
-        cd $GITHUB_WORKSPACE
-        python3 build_pkg_v2.py
-        ls -la PS2PKGConv.pkg
-    
-    - name: Upload PKG
+    - name: Upload ELF
       uses: actions/upload-artifact@v4
       with:
-        name: PS2PKGConv
-        path: PS2PKGConv.pkg
+        name: PS2PKGConv-ELF
+        path: bin/PS2PKGConv.elf
