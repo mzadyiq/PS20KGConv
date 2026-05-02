@@ -24,31 +24,28 @@ jobs:
         git clone https://github.com/ps3dev/ps3toolchain
         cd ps3toolchain
         for f in depends/check-*.sh; do rm -f "$f"; touch "$f"; chmod +x "$f"; done
-        bash toolchain.sh
         export PS3DEV=$HOME/ps3dev
         export PATH=$PS3DEV/bin:$PATH
+        sed -i 's|/ppu|'$HOME'/ps3dev/ppu|g' scripts/001-binutils-PPU.sh
+        sed -i 's|/ppu|'$HOME'/ps3dev/ppu|g' scripts/002-gcc-newlib-PPU.sh
+        sed -i 's|/ppu|'$HOME'/ps3dev/ppu|g' scripts/006-gcc-newlib-SPU.sh
+        bash toolchain.sh
         echo "PS3DEV=$HOME/ps3dev" >> $GITHUB_ENV
         echo "PATH=$PS3DEV/bin:$PATH" >> $GITHUB_ENV
     
     - name: Build ELF
       run: |
-        export PS3DEV=$HOME/ps3dev
-        export PATH=$PS3DEV/bin:$PATH
         cd $GITHUB_WORKSPACE
         mkdir -p bin
         powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf
     
     - name: Create SELF
       run: |
-        export PS3DEV=$HOME/ps3dev
-        export PATH=$PS3DEV/bin:$PATH
         cd $GITHUB_WORKSPACE
         make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
     
     - name: Create PKG
       run: |
-        export PS3DEV=$HOME/ps3dev
-        export PATH=$PS3DEV/bin:$PATH
         cd $GITHUB_WORKSPACE
         package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv.pkg
     
