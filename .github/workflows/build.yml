@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     steps:
       - name: 0-Checkout
         uses: actions/checkout@v4
@@ -16,7 +16,7 @@ jobs:
       - name: 1-Install-Dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential make git wget flex bison texinfo libelf-dev libssl-dev zlib1g-dev libgmp-dev libmpfr-dev libmpc-dev libtool libtool-bin autoconf automake pkg-config
+          sudo apt install -y build-essential make git wget flex bison texinfo libelf-dev libssl-dev zlib1g-dev libgmp-dev libmpfr-dev libmpc-dev libtool libtool-bin autoconf automake pkg-config gcc-powerpc64-linux-gnu
           echo "OK: Dependencies installed"
 
       - name: 2-Clone-Fix-Toolchain
@@ -25,14 +25,9 @@ jobs:
           git clone https://github.com/ps3dev/ps3toolchain || echo "Already cloned"
           cd ps3toolchain
           for f in depends/check-*.sh; do rm -f "$f"; touch "$f"; chmod +x "$f"; done
-          sed -i 's/009-ps3libraries.sh/true/' toolchain.sh
-          wget -q -O /tmp/config.sub 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.sub'
-          wget -q -O /tmp/config.guess 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-          cp /tmp/config.sub ~/ps3toolchain/
-          cp /tmp/config.guess ~/ps3toolchain/
           echo "OK: Toolchain ready"
 
-      - name: 3-Build-binutils
+      - name: 3-Build-binutils-only
         run: |
           export PS3DEV=$HOME/ps3dev
           export PATH=$PS3DEV/bin:$PATH
@@ -41,23 +36,7 @@ jobs:
           bash scripts/001-binutils-PPU.sh
           echo "OK: binutils built"
 
-      - name: 4-Build-GCC-Stage1
-        run: |
-          export PS3DEV=$HOME/ps3dev
-          export PATH=$PS3DEV/bin:$PATH
-          cd ~/ps3toolchain
-          bash scripts/002-gcc-newlib-PPU.sh
-          echo "OK: GCC Stage 1 built"
-
-      - name: 5-Build-newlib-GCC-Stage2
-        run: |
-          export PS3DEV=$HOME/ps3dev
-          export PATH=$PS3DEV/bin:$PATH
-          cd ~/ps3toolchain
-          bash scripts/006-gcc-newlib-SPU.sh
-          echo "OK: newlib built"
-
-      - name: 6-Build-PSL1GHT
+      - name: 4-Build-PSL1GHT-only
         run: |
           export PS3DEV=$HOME/ps3dev
           export PATH=$PS3DEV/bin:$PATH
@@ -65,26 +44,38 @@ jobs:
           bash scripts/008-psl1ght.sh
           echo "OK: PSL1GHT built"
 
-      - name: 7-Verify-Tools
+      - name: 5-Link-PowerPC-GCC
+        run: |
+          export PS3DEV=$HOME/ps3dev
+          mkdir -p $PS3DEV/bin
+          cd $PS3DEV/bin
+          ln -sf /usr/bin/powerpc64-linux-gnu-gcc powerpc64-ps3-elf-gcc
+          ln -sf /usr/bin/powerpc64-linux-gnu-g++ powerpc64-ps3-elf-g++
+          ln -sf /usr/bin/powerpc64-linux-gnu-ar powerpc64-ps3-elf-ar
+          ln -sf /usr/bin/powerpc64-linux-gnu-ld powerpc64-ps3-elf-ld
+          ln -sf /usr/bin/powerpc64-linux-gnu-objcopy powerpc64-ps3-elf-objcopy
+          echo "OK: PowerPC GCC linked"
+
+      - name: 6-Verify-Tools
         run: |
           export PS3DEV=$HOME/ps3dev
           export PATH=$PS3DEV/bin:$PATH
           echo "=== VERIFYING TOOLS ==="
-          echo -n "gcc: " && which powerpc64-ps3-elf-gcc || echo "MISSING"
+          echo -n "gcc: " && which powerpc64-ps3-elf-gcc && powerpc64-ps3-elf-gcc --version | head -1 || echo "MISSING"
           echo -n "make_self: " && which make_self || echo "MISSING"
           echo -n "package_finalize: " && which package_finalize || echo "MISSING"
 
-      - name: 8-Build-ELF
+      - name: 7-Build-ELF
         run: |
           export PS3DEV=$HOME/ps3dev
           export PATH=$PS3DEV/bin:$PATH
           cd $GITHUB_WORKSPACE
           mkdir -p bin
-          powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf
+          powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf -static
           ls -la bin/PS2PKGConv.elf
           echo "OK: ELF built"
 
-      - name: 9-Sign-Build-PKG
+      - name: 8-Sign-Build-PKG
         run: |
           export PS3DEV=$HOME/ps3dev
           export PATH=$PS3DEV/bin:$PATH
@@ -94,7 +85,7 @@ jobs:
           ls -la PS2PKGConv.pkg
           echo "OK: PKG ready"
 
-      - name: 10-Upload-PKG
+      - name: 9-Upload-PKG
         uses: actions/upload-artifact@v4
         with:
           name: PS2PKGConv-PKG
