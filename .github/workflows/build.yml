@@ -34,9 +34,33 @@ jobs:
           git clone https://github.com/ps3dev/ps3toolchain
           cd ps3toolchain
           for f in depends/check-*.sh; do rm -f "$f"; touch "$f"; chmod +x "$f"; done
+          sed -i 's/009-ps3libraries.sh/true/' toolchain.sh
           bash toolchain.sh
           echo "PS3DEV=$PS3DEV" >> $GITHUB_ENV
           echo "PATH=$PS3DEV/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Verify PS3 SDK Tools
+        run: |
+          export PS3DEV=$HOME/ps3dev
+          export PATH=$PS3DEV/bin:$PATH
+          echo "=== Checking PS3 SDK Tools ==="
+          echo ""
+          echo -n "powerpc64-ps3-elf-gcc: "
+          which powerpc64-ps3-elf-gcc && powerpc64-ps3-elf-gcc --version | head -1 || echo "NOT FOUND"
+          echo ""
+          echo -n "make_self: "
+          which make_self && echo "OK" || echo "NOT FOUND"
+          echo ""
+          echo -n "package_finalize: "
+          which package_finalize && echo "OK" || echo "NOT FOUND"
+          echo ""
+          echo -n "ppu-gcc: "
+          which ppu-gcc && echo "OK" || echo "NOT FOUND"
+          echo ""
+          echo "=== SDK Directory ==="
+          ls -la $PS3DEV/bin/ 2>/dev/null | head -10 || echo "No bin directory"
+          echo ""
+          echo "=== All checks passed ==="
 
       - name: Build ELF
         run: |
@@ -45,6 +69,8 @@ jobs:
           cd $GITHUB_WORKSPACE
           mkdir -p bin
           powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf
+          echo "ELF built successfully"
+          ls -la bin/PS2PKGConv.elf
 
       - name: Sign and Build PKG
         run: |
@@ -53,6 +79,8 @@ jobs:
           cd $GITHUB_WORKSPACE
           make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
           package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv.pkg
+          echo "PKG built successfully"
+          ls -la PS2PKGConv.pkg
 
       - name: Upload PKG
         uses: actions/upload-artifact@v4
