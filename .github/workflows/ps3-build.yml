@@ -1,44 +1,39 @@
-name: PS3 Build Pipeline
+name: PS3 Build Pipeline - Mr.Mouswi Edition
 
-on:
-  push:
-    branches: [ main, master ]
+on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest # سنعمل مباشرة على نظام أوبونتو بدون Docker
+    runs-on: ubuntu-22.04 # نستخدم 22.04 لضمان ثبات بعض المكتبات
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 # تحديث لـ v4
 
-      - name: Install System Dependencies
+      - name: Install Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential git auto-conf automake bison flex libelf-dev libgmp-dev libncurses5-dev libssl-dev libtool libz-dev make patch python3 texinfo wget pkg-config
+          sudo apt update
+          # تثبيت الأدوات اللازمة والبدائل لـ OpenSSL
+          sudo apt install -y build-essential git python3 bison flex libelf-dev libssl-dev zlib1g-dev autoconf
 
-      - name: Download Pre-built Toolchain
+      - name: Setup PS3 Public Tools
         run: |
-          # سنقوم بتحميل نسخة مبنية مسبقاً ومرفوعة كملف مضغوط لتوفير وقت بناء 3 ساعات
-          # هذه النسخة متوفرة غالباً في مخازن توزيعات الـ PS3 الموثوقة
-          wget https://github.com/bucanero/ps3dev/releases/download/v1.0/ps3dev-ubuntu-latest.tar.gz
-          sudo tar -xzf ps3dev-ubuntu-latest.tar.gz -C /
-          
-      - name: Set Environment Variables
-        run: |
-          echo "PS3DEV=/usr/local/ps3dev" >> $GITHUB_ENV
-          echo "PSL1GHT=/usr/local/ps3dev" >> $GITHUB_ENV
-          echo "/usr/local/ps3dev/bin" >> $GITHUB_PATH
-          echo "/usr/local/ps3dev/ppu/bin" >> $GITHUB_PATH
-
-      - name: Compile Application
-        run: |
-          # الآن المترجم موجود في المسار، يمكننا التجميع
+          git clone https://github.com/ifcaro/ps3publictools.git
+          cd ps3publictools
+          # حل مشكلة AES_ctr128_encrypt عبر ربط المكتبة بشكل صحيح
           make
+          sudo make install
+          cd ..
+
+      - name: Compile and Package
+        run: |
+          make clean
+          make
+          # تأكد من أن Makefile الخاص بك يقوم باستدعاء الأدوات المثبتة
 
       - name: Upload PKG Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4 # تحديث إجباري لـ v4
         with:
-          name: PS3-Package-Output
+          name: PS20KGConv-Package
           path: "*.pkg"
           
