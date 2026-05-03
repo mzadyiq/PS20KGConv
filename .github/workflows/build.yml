@@ -1,4 +1,4 @@
-name: Build PS2PKGConv PKG (No Docker)
+name: Build PS2PKGConv PKG Final
 
 on:
   push:
@@ -16,17 +16,18 @@ jobs:
       - name: 1-Install-Tools
         run: |
           sudo apt update
-          sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev
+          sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev libssl3
           sudo apt install -y gcc-powerpc64-linux-gnu
           
           cd /tmp
+          rm -rf ps3publictools
           git clone https://github.com/ifcaro/ps3publictools
           cd ps3publictools
-          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
-          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
+          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w 2>&1
+          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w 2>&1
           sudo cp make_self package_finalize /usr/local/bin/
-          
-          echo "Tools installed"
+          ls -la /usr/local/bin/make_self /usr/local/bin/package_finalize
+          echo "OK: Tools installed"
 
       - name: 2-Build-ELF
         run: |
@@ -34,18 +35,21 @@ jobs:
           mkdir -p bin
           powerpc64-linux-gnu-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf -static
           ls -la bin/PS2PKGConv.elf
+          echo "OK: ELF built"
 
       - name: 3-Create-SELF
         run: |
           cd $GITHUB_WORKSPACE
           make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
           ls -la bin/PS2PKGConv.self
+          echo "OK: SELF created"
 
       - name: 4-Create-PKG
         run: |
           cd $GITHUB_WORKSPACE
           package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv.pkg
           ls -la PS2PKGConv.pkg
+          echo "OK: PKG ready"
 
       - name: 5-Upload-PKG
         uses: actions/upload-artifact@v4
