@@ -1,4 +1,4 @@
-name: Build PS2PKGConv PKG (Final)
+name: Build PS2PKGConv PKG
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ps3dev/ps3dev:latest
+      image: ghcr.io/ps3dev/ps3dev:latest
     timeout-minutes: 15
     steps:
       - name: 0-Checkout
@@ -17,54 +17,30 @@ jobs:
 
       - name: 1-Verify-Environment
         run: |
-          echo "========================================="
-          echo "  PS3 SDK ENVIRONMENT CHECK"
-          echo "========================================="
-          echo ""
-          echo "=== User & Paths ==="
-          whoami
-          echo "HOME: $HOME"
-          echo "PS3DEV: ${PS3DEV}"
-          echo "PSL1GHT: ${PSL1GHT}"
-          echo ""
-          echo "=== Compiler ==="
-          echo -n "powerpc64-ps3-elf-gcc: "
-          which powerpc64-ps3-elf-gcc && powerpc64-ps3-elf-gcc --version | head -1 || echo "NOT FOUND"
-          echo ""
-          echo "=== Signing Tools ==="
-          echo -n "make_self: "
-          which make_self && echo "OK" || echo "NOT FOUND"
-          echo -n "package_finalize: "
-          which package_finalize && echo "OK" || echo "NOT FOUND"
-          echo ""
-          echo "=== SDK Libraries ==="
-          ls /usr/local/ps3dev/ppu/lib/ 2>/dev/null | head -5 || echo "No libs"
-          echo ""
-          echo "========================================="
-          echo "  ALL CHECKS PASSED"
-          echo "========================================="
+          echo "=== PS3 SDK Check ==="
+          which powerpc64-ps3-elf-gcc && powerpc64-ps3-elf-gcc --version | head -1 || echo "gcc missing"
+          which make_self && echo "make_self OK" || echo "make_self missing"
+          which package_finalize && echo "package_finalize OK" || echo "package_finalize missing"
+          echo "=== All checks done ==="
 
       - name: 2-Build-ELF
         run: |
           cd $GITHUB_WORKSPACE
           mkdir -p bin
-          echo "Compiling PS2PKGConv..."
           powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf
-          echo "ELF: $(ls -la bin/PS2PKGConv.elf)"
+          ls -la bin/PS2PKGConv.elf
 
       - name: 3-Create-SELF
         run: |
           cd $GITHUB_WORKSPACE
-          echo "Creating SELF..."
           make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
-          echo "SELF: $(ls -la bin/PS2PKGConv.self)"
+          ls -la bin/PS2PKGConv.self
 
       - name: 4-Create-PKG
         run: |
           cd $GITHUB_WORKSPACE
-          echo "Building PKG..."
           package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv.pkg
-          echo "PKG: $(ls -la PS2PKGConv.pkg)"
+          ls -la PS2PKGConv.pkg
 
       - name: 5-Upload-PKG
         uses: actions/upload-artifact@v4
