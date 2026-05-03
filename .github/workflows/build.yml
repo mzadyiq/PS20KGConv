@@ -1,4 +1,4 @@
-name: Build PS2PKGConv PKG
+name: Build PS2PKGConv PKG (No Docker)
 
 on:
   push:
@@ -8,26 +8,31 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ps3dev/ps3dev:latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: 0-Checkout
         uses: actions/checkout@v4
 
-      - name: 1-Verify-Environment
+      - name: 1-Install-Tools
         run: |
-          echo "=== PS3 SDK Check ==="
-          which powerpc64-ps3-elf-gcc && powerpc64-ps3-elf-gcc --version | head -1 || echo "gcc missing"
-          which make_self && echo "make_self OK" || echo "make_self missing"
-          which package_finalize && echo "package_finalize OK" || echo "package_finalize missing"
-          echo "=== All checks done ==="
+          sudo apt update
+          sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev
+          sudo apt install -y gcc-powerpc64-linux-gnu
+          
+          cd /tmp
+          git clone https://github.com/ifcaro/ps3publictools
+          cd ps3publictools
+          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
+          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
+          sudo cp make_self package_finalize /usr/local/bin/
+          
+          echo "Tools installed"
 
       - name: 2-Build-ELF
         run: |
           cd $GITHUB_WORKSPACE
           mkdir -p bin
-          powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf
+          powerpc64-linux-gnu-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf -static
           ls -la bin/PS2PKGConv.elf
 
       - name: 3-Create-SELF
