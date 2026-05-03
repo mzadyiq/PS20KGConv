@@ -1,34 +1,49 @@
-name: PS3-Build
+name: Build-PS2PKGConv-Final
+
 on: [push, workflow_dispatch]
+
 jobs:
-  ps3-job:
+  build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup
+      - name: 0-Checkout
+        uses: actions/checkout@v4
+
+      - name: 1-Install-And-Patch-Tools
         run: |
           sudo apt update
           sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev gcc-powerpc64-linux-gnu
+          
+          # بناء أدوات التوقيع مع ترقيع احترافي للـ AES
           cd /tmp
           git clone https://github.com/ifcaro/ps3publictools
           cd ps3publictools
-          sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' make_self.c
+          # هذا السطر يحل مشكلة الـ "Too many arguments" التي ظهرت في صورتك
+          sed -i 's/AES_ctr128_encrypt(segment_ptr->data, segment_ptr->data, segment_ptr->len, \&aes_key, iv, ecount_buf, \&num)/AES_cbc_encrypt(segment_ptr->data, segment_ptr->data, segment_ptr->len, \&aes_key, iv, AES_ENCRYPT)/g' make_self.c
+          sed -i 's/AES_ctr128_encrypt(\&output_self_data\[0x40+metadata_offset\], \&output_self_data\[0x40+metadata_offset\], get_u64(\&output_self_header.s_shsize)-metadata_offset-0x40, \&aes_key, iv, ecount_buf, \&num)/AES_cbc_encrypt(\&output_self_data\[0x40+metadata_offset\], \&output_self_data\[0x40+metadata_offset\], get_u64(\&output_self_header.s_shsize)-metadata_offset-0x40, \&aes_key, iv, AES_ENCRYPT)/g' make_self.c
           gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
           sudo cp make_self /usr/local/bin/
+
+          # بناء أداة إنشاء الـ PKG
           cd /tmp
           git clone --depth 1 https://github.com/ps3dev/PSL1GHT
           cd PSL1GHT/tools/geohot
           sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' package_finalize.c
           gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
           sudo cp package_finalize /usr/local/bin/
-      - name: Build
+
+      - name: 2-Build-App-And-Package
         run: |
           mkdir -p bin
+          # بناء ملف الـ ELF المتوافق مع PS3
           powerpc64-linux-gnu-gcc -O2 -Wall -Iinclude source/main.c -o bin/app.elf -static
+          # التوقيع والتحويل إلى PKG
           make_self bin/app.elf bin/app.self
           package_finalize bin/app.self PS20KG PS2PKG-MrMouswi.pkg
-      - uses: actions/upload-artifact@v4
+
+      - name: 3-Upload-Final-PKG
+        uses: actions/upload-artifact@v4
         with:
-          name: PS2PKG-Output
+          name: PS2PKG-Output-Final
           path: "*.pkg"
           
