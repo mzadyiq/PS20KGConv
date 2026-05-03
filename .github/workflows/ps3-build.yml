@@ -1,0 +1,26 @@
+name: PS3 Build Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ps3dev/ps3dev:latest # استخدام بيئة جاهزة ومحدثة
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Compile and Package
+        run: |
+          make
+          
+      - name: Upload PKG Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: PS3-Application-Package
+          path: "*.pkg"
+          
