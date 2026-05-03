@@ -1,41 +1,68 @@
-name: PS3-Pro-Build-MrMouswi
+name: Build PS2PKGConv PKG
 
-on: [push]
+on:
+  push:
+    branches: [main, master] # أضفت master لضمان العمل على أي فرع
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-
+    timeout-minutes: 10
     steps:
-      - name: Checkout Code
+      - name: 0-Checkout
         uses: actions/checkout@v4
 
-      - name: Install System Dependencies
+      - name: 1-Install-Tools
         run: |
-          sudo apt-get update
-          # تثبيت المكتبات مع دعم الإصدارات القديمة (Legacy)
-          sudo apt-get install -y build-essential git bison flex libelf-dev libssl-dev zlib1g-dev libncurses5-dev autoconf pkg-config
-
-      - name: Setup PS3 Public Tools
-        run: |
-          # سحب أدوات التوقيع
-          git clone https://github.com/ifcaro/ps3publictools.git
+          sudo apt update
+          sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev
+          sudo apt install -y gcc-powerpc64-linux-gnu
+          
+          cd /tmp
+          
+          # build make_self with AES_cbc_encrypt patch
+          rm -rf ps3publictools
+          git clone https://github.com/ifcaro/ps3publictools
           cd ps3publictools
-          # تعديل الكود برمجياً لتجاوز مشكلة OpenSSL قبل البناء
-          sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' make_self.c || true
-          make
-          sudo make install
-          cd ..
+          sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' make_self.c
+          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
+          sudo cp make_self /usr/local/bin/
+          
+          # build package_finalize
+          cd /tmp
+          rm -rf PSL1GHT
+          git clone --depth 1 https://github.com/ps3dev/PSL1GHT
+          cd PSL1GHT/tools/geohot
+          sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' package_finalize.c
+          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
+          sudo cp package_finalize /usr/local/bin/
+          
+          echo "OK: Tools installed"
 
-      - name: Build Application
+      - name: 2-Build-ELF
         run: |
-          # تنظيف وبناء المشروع
-          make clean
-          make
+          cd $GITHUB_WORKSPACE
+          mkdir -p bin
+          # استخدام المجلدات التي أنشأتها أنت (source/include)
+          powerpc64-linux-gnu-gcc -O2 -Wall -Iinclude source/main.c -o bin/PS2PKGConv.elf -static
+          echo "OK: ELF built"
 
-      - name: Upload Final PKG
+      - name: 3-Create-SELF
+        run: |
+          cd $GITHUB_WORKSPACE
+          make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
+          echo "OK: SELF created"
+
+      - name: 4-Create-PKG
+        run: |
+          cd $GITHUB_WORKSPACE
+          # إنشاء الـ PKG النهائي
+          package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv.pkg
+          echo "OK: PKG ready"
+
+      - name: 5-Upload-PKG
         uses: actions/upload-artifact@v4
         with:
-          name: PS20KGConv-Final-Build
-          path: "*.pkg"
-          
+          name: PS2PKGConv-MrMouswi-Edition
+          path: PS2PKGConv.pkg
