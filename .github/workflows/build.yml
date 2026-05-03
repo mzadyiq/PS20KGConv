@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
       - name: 0-Checkout
@@ -16,15 +16,18 @@ jobs:
       - name: 1-Install-Tools
         run: |
           sudo apt update
-          sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev libssl3
+          sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev
           sudo apt install -y gcc-powerpc64-linux-gnu
           
           cd /tmp
           rm -rf ps3publictools
           git clone https://github.com/ifcaro/ps3publictools
           cd ps3publictools
-          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w 2>&1
-          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w 2>&1
+          
+          # إصلاح: استخدام OpenSSL 3.0 مع deprecated API
+          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w -DOPENSSL_SUPPRESS_DEPRECATED
+          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w -DOPENSSL_SUPPRESS_DEPRECATED
+          
           sudo cp make_self package_finalize /usr/local/bin/
           ls -la /usr/local/bin/make_self /usr/local/bin/package_finalize
           echo "OK: Tools installed"
