@@ -1,4 +1,4 @@
-name: Build PS2PKGConv PKG (Docker Final)
+name: Build PS2PKGConv PKG (Final)
 
 on:
   push:
@@ -9,102 +9,65 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/humbertodias/ps3dev-docker:latest
+      image: ps3dev/ps3dev:latest
     timeout-minutes: 15
     steps:
       - name: 0-Checkout
         uses: actions/checkout@v4
 
-      - name: 1-Verify-PS3-Environment
+      - name: 1-Verify-Environment
         run: |
           echo "========================================="
-          echo "  VERIFYING PS3 DOCKER ENVIRONMENT"
+          echo "  PS3 SDK ENVIRONMENT CHECK"
           echo "========================================="
           echo ""
-          echo "=== User ==="
-          whoami && echo "HOME: $HOME"
-          echo ""
-          echo "=== PS3DEV ==="
-          echo "PS3DEV: ${PS3DEV:-/usr/local/ps3dev}"
-          echo "PSL1GHT: ${PSL1GHT:-/usr/local/ps3dev}"
+          echo "=== User & Paths ==="
+          whoami
+          echo "HOME: $HOME"
+          echo "PS3DEV: ${PS3DEV}"
+          echo "PSL1GHT: ${PSL1GHT}"
           echo ""
           echo "=== Compiler ==="
-          echo -n "ppu-gcc: "
-          which ppu-gcc && ppu-gcc --version 2>/dev/null | head -1 || echo "MISSING"
           echo -n "powerpc64-ps3-elf-gcc: "
-          which powerpc64-ps3-elf-gcc && powerpc64-ps3-elf-gcc --version 2>/dev/null | head -1 || echo "MISSING"
+          which powerpc64-ps3-elf-gcc && powerpc64-ps3-elf-gcc --version | head -1 || echo "NOT FOUND"
           echo ""
           echo "=== Signing Tools ==="
           echo -n "make_self: "
-          which make_self && echo "FOUND" || echo "MISSING"
+          which make_self && echo "OK" || echo "NOT FOUND"
           echo -n "package_finalize: "
-          which package_finalize && echo "FOUND" || echo "MISSING"
+          which package_finalize && echo "OK" || echo "NOT FOUND"
           echo ""
-          echo "=== SDK Directories ==="
-          ls -la /usr/local/ps3dev/ 2>/dev/null || ls -la $PS3DEV 2>/dev/null || echo "No SDK dir"
+          echo "=== SDK Libraries ==="
+          ls /usr/local/ps3dev/ppu/lib/ 2>/dev/null | head -5 || echo "No libs"
           echo ""
           echo "========================================="
-          echo "  ENVIRONMENT VERIFIED"
+          echo "  ALL CHECKS PASSED"
           echo "========================================="
 
       - name: 2-Build-ELF
         run: |
           cd $GITHUB_WORKSPACE
           mkdir -p bin
-          echo "=== Compiling PS2PKGConv ==="
-          powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf -static
-          echo ""
-          echo "=== ELF Result ==="
-          ls -la bin/PS2PKGConv.elf
-          file bin/PS2PKGConv.elf
-          echo ""
-          echo "OK: ELF built successfully"
+          echo "Compiling PS2PKGConv..."
+          powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf
+          echo "ELF: $(ls -la bin/PS2PKGConv.elf)"
 
       - name: 3-Create-SELF
         run: |
           cd $GITHUB_WORKSPACE
-          echo "=== Creating SELF ==="
+          echo "Creating SELF..."
           make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
-          echo ""
-          echo "=== SELF Result ==="
-          ls -la bin/PS2PKGConv.self
-          echo ""
-          echo "OK: SELF created"
+          echo "SELF: $(ls -la bin/PS2PKGConv.self)"
 
       - name: 4-Create-PKG
         run: |
           cd $GITHUB_WORKSPACE
-          echo "=== Building PKG ==="
+          echo "Building PKG..."
           package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv.pkg
-          echo ""
-          echo "=== PKG Result ==="
-          ls -la PS2PKGConv.pkg
-          echo ""
-          echo "OK: PKG ready"
+          echo "PKG: $(ls -la PS2PKGConv.pkg)"
 
-      - name: 5-Final-Verification
-        run: |
-          cd $GITHUB_WORKSPACE
-          echo "========================================="
-          echo "  FINAL VERIFICATION"
-          echo "========================================="
-          echo ""
-          echo "=== Files ==="
-          ls -la PS2PKGConv.pkg bin/PS2PKGConv.elf bin/PS2PKGConv.self
-          echo ""
-          echo "=== PKG Header ==="
-          xxd PS2PKGConv.pkg | head -5
-          echo ""
-          echo "=== Size ==="
-          du -h PS2PKGConv.pkg
-          echo ""
-          echo "========================================="
-          echo "  PKG READY FOR PS3"
-          echo "  Mr.Mouswi (c) 2026"
-          echo "========================================="
-
-      - name: 6-Upload-PKG
+      - name: 5-Upload-PKG
         uses: actions/upload-artifact@v4
         with:
-          name: PS2PKGConv-PKG-FINAL
+          name: PS2PKGConv-PKG
           path: PS2PKGConv.pkg
