@@ -37,7 +37,24 @@ jobs:
           bash scripts/001-binutils-PPU.sh
           echo "OK: binutils built"
 
-      - name: 4-Build-PSL1GHT-only
+      - name: 4-Link-GCC-BEFORE-PSL1GHT
+        run: |
+          export PS3DEV=$HOME/ps3dev
+          export PSL1GHT=$PS3DEV
+          export PATH=$PS3DEV/bin:$PATH
+          mkdir -p $PS3DEV/bin
+          cd $PS3DEV/bin
+          ln -sf /usr/bin/powerpc64-linux-gnu-gcc powerpc64-ps3-elf-gcc
+          ln -sf /usr/bin/powerpc64-linux-gnu-gcc ppu-gcc
+          ln -sf /usr/bin/powerpc64-linux-gnu-g++ powerpc64-ps3-elf-g++
+          ln -sf /usr/bin/powerpc64-linux-gnu-g++ ppu-g++
+          ln -sf /usr/bin/powerpc64-linux-gnu-ar powerpc64-ps3-elf-ar
+          ln -sf /usr/bin/powerpc64-linux-gnu-ar ppu-ar
+          ln -sf /usr/bin/powerpc64-linux-gnu-ld powerpc64-ps3-elf-ld
+          ln -sf /usr/bin/powerpc64-linux-gnu-ld ppu-ld
+          echo "OK: GCC linked"
+
+      - name: 5-Build-PSL1GHT-only
         run: |
           export PS3DEV=$HOME/ps3dev
           export PSL1GHT=$PS3DEV
@@ -46,26 +63,13 @@ jobs:
           bash scripts/008-psl1ght.sh
           echo "OK: PSL1GHT built"
 
-      - name: 5-Link-PowerPC-GCC
-        run: |
-          export PS3DEV=$HOME/ps3dev
-          export PSL1GHT=$PS3DEV
-          export PATH=$PS3DEV/bin:$PATH
-          mkdir -p $PS3DEV/bin
-          cd $PS3DEV/bin
-          ln -sf /usr/bin/powerpc64-linux-gnu-gcc powerpc64-ps3-elf-gcc
-          ln -sf /usr/bin/powerpc64-linux-gnu-g++ powerpc64-ps3-elf-g++
-          ln -sf /usr/bin/powerpc64-linux-gnu-ar powerpc64-ps3-elf-ar
-          ln -sf /usr/bin/powerpc64-linux-gnu-ld powerpc64-ps3-elf-ld
-          echo "OK: PowerPC GCC linked"
-
       - name: 6-Verify-Tools
         run: |
           export PS3DEV=$HOME/ps3dev
           export PSL1GHT=$PS3DEV
           export PATH=$PS3DEV/bin:$PATH
           echo "=== VERIFYING TOOLS ==="
-          echo -n "gcc: " && which powerpc64-ps3-elf-gcc && powerpc64-ps3-elf-gcc --version | head -1 || echo "MISSING"
+          echo -n "ppu-gcc: " && which ppu-gcc && ppu-gcc --version | head -1 || echo "MISSING"
           echo -n "make_self: " && which make_self || echo "MISSING"
           echo -n "package_finalize: " && which package_finalize || echo "MISSING"
 
@@ -76,7 +80,7 @@ jobs:
           export PATH=$PS3DEV/bin:$PATH
           cd $GITHUB_WORKSPACE
           mkdir -p bin
-          powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf -static
+          ppu-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf -static
           ls -la bin/PS2PKGConv.elf
           echo "OK: ELF built"
 
