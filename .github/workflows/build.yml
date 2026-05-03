@@ -1,48 +1,29 @@
-name: Build-PS2PKGConv-Stable
-
+name: PS2PKG-Fast-Build
 on: [push, workflow_dispatch]
 
 jobs:
   build:
-    # التغيير الجوهري هنا: استخدام الإصدار 20.04 لضمان توافق OpenSSL
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    # استخدام حاوية جاهزة توفر بيئة PS3 كاملة ومستقرة
+    container: pokedev/psl1ght:latest
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
+      - name: Build and Sign
         run: |
-          sudo apt update
-          sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev gcc-powerpc64-linux-gnu
-
-      - name: Setup Tools
-        run: |
-          # بناء ps3publictools بدون أي تعديل في الكود (سيعمل تلقائياً)
-          cd /tmp
-          git clone https://github.com/ifcaro/ps3publictools
-          cd ps3publictools
-          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
-          sudo cp make_self /usr/local/bin/
-
-          # بناء package_finalize
-          cd /tmp
-          git clone --depth 1 https://github.com/ps3dev/PSL1GHT
-          cd PSL1GHT/tools/geohot
-          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
-          sudo cp package_finalize /usr/local/bin/
-
-      - name: Build Executable and Package
-        run: |
+          # إنشاء المجلد
           mkdir -p bin
-          # بناء التطبيق الخاص بك
-          powerpc64-linux-gnu-gcc -O2 -Wall -Iinclude source/main.c -o bin/app.elf -static
-          # هذه الخطوات ستنجح الآن بدون خطأ malloc
+          
+          # البناء باستخدام المترجم الجاهز داخل الحاوية
+          ppu-gcc -O2 -Wall -Iinclude source/main.c -o bin/app.elf
+          
+          # التوقيع وتحويل الملف (هذه الأدوات تأتي جاهزة ومستقرة داخل الحاوية)
           make_self bin/app.elf bin/app.self
           package_finalize bin/app.self PS20KG PS2PKG-MrMouswi.pkg
 
-      - name: Upload PKG
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: PS2PKG-Final-Product
+          name: PS2PKG-Final
           path: "*.pkg"
-          
