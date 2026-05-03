@@ -1,29 +1,48 @@
-name: PS2PKG-Fast-Build
+name: Build-PS2PKG-Mouswi-Edition
+
 on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    # استخدام حاوية جاهزة توفر بيئة PS3 كاملة ومستقرة
-    container: pokedev/psl1ght:latest
+    # استخدام 18.04 هو الحل السحري لكل مشاكل OpenSSL
+    runs-on: ubuntu-18.04
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Build and Sign
+      - name: Install Dependencies
         run: |
-          # إنشاء المجلد
+          sudo apt-get update
+          sudo apt-get install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev gcc-powerpc64-linux-gnu
+
+      - name: Build PS3 Tools
+        run: |
+          # بناء أدوات التوقيع (ستعمل هنا بدون أي ترقيع أو أخطاء)
+          cd /tmp
+          git clone https://github.com/ifcaro/ps3publictools
+          cd ps3publictools
+          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
+          sudo cp make_self /usr/local/bin/
+
+          # بناء أداة إنشاء الـ PKG
+          cd /tmp
+          git clone --depth 1 https://github.com/ps3dev/PSL1GHT
+          cd PSL1GHT/tools/geohot
+          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
+          sudo cp package_finalize /usr/local/bin/
+
+      - name: Final Build and Package
+        run: |
           mkdir -p bin
+          # بناء ملف الـ ELF الخاص بك (source/main.c)
+          powerpc64-linux-gnu-gcc -O2 -Wall -Iinclude source/main.c -o bin/app.elf -static
           
-          # البناء باستخدام المترجم الجاهز داخل الحاوية
-          ppu-gcc -O2 -Wall -Iinclude source/main.c -o bin/app.elf
-          
-          # التوقيع وتحويل الملف (هذه الأدوات تأتي جاهزة ومستقرة داخل الحاوية)
+          # التوقيع والتحويل (ستعمل الآن بسلاسة وبدون malloc error)
           make_self bin/app.elf bin/app.self
           package_finalize bin/app.self PS20KG PS2PKG-MrMouswi.pkg
 
-      - name: Upload
+      - name: Upload Finished PKG
         uses: actions/upload-artifact@v4
         with:
-          name: PS2PKG-Final
+          name: PS2PKG-Result
           path: "*.pkg"
