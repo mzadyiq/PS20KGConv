@@ -1,29 +1,41 @@
-STRIP		:= ppu-strip
-OBJCOPY		:= ppu-objcopy
+# اسم التطبيق النهائي
+TARGET		:= PS20KGConv
+# معرف التطبيق (يمكنك تغييره لاحقاً)
+TITLE_ID	:= MZAD20KG1
+
+# مسارات المجلدات بناءً على صورك
+SOURCE_DIR	:= source
+INCLUDE_DIR	:= include
+BUILD_DIR	:= build
+
+# البحث عن جميع ملفات .c في مجلد source
+SOURCES		:= $(wildcard $(SOURCE_DIR)/*.c)
+OBJS		:= $(patsubst $(SOURCE_DIR)/%.c, $(BUILD_DIR)/%.o, $(SOURCES))
+
+# إعدادات المترجم
 CC			:= ppu-gcc
-CXX			:= ppu-g++
+CFLAGS		:= -I$(INCLUDE_DIR) -O2 -Wall
+LDFLAGS		:= 
 
-TARGET		:= MyPS3App
-CONTENT_ID	:= UP0001-$(TARGET)_00-0000000000000000
-PKG_FILES	:= pkg
-
-CFLAGS		:= -O2 -Wall
-LIBS		:= -lrt -lvp5 -lsysutil -lmsgstep -lnet -lio -lpng -lz
-
+# الأهداف الرئيسية
 all: $(TARGET).pkg
 
-$(TARGET).elf: main.o
-	$(CC) $< $(LIBS) -o $@
+$(TARGET).pkg: $(TARGET).self
+	# هنا نستخدم أداة pkg_helper لإنشاء الحزمة النهائية
+	@echo "Creating PKG..."
+	make_package_npdrm $(TARGET).self
 
 $(TARGET).self: $(TARGET).elf
-	make_self $< $@
+	@echo "Creating SELF..."
+	make_self $(TARGET).elf $(TARGET).self
 
-$(TARGET).pkg: $(TARGET).self
-	mkdir -p $(PKG_FILES)
-	cp $< $(PKG_FILES)/USRDIR/EBOOT.BIN
-	# هنا يتم استدعاء أداة بناء الـ PKG المدمجة في البيئة
-	pkg_package -o $@ $(PKG_FILES) $(CONTENT_ID)
+$(TARGET).elf: $(OBJS)
+	@echo "Linking ELF..."
+	$(CC) $(OBJS) $(LDFLAGS) -o $@
+
+$(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.c
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o *.elf *.self *.pkg
-
+	rm -rf $(BUILD_DIR) *.elf *.self *.pkg
