@@ -1,35 +1,23 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/process.h>
-#include <vsh/pdm.h>
-#include "ui.h"        // الملف الذي برمجته في include
-#include "converter.h" // ملف منطق التحويل
+#include "include/ui.h"
 
-// حفظ الحقوق برمجياً
-const char* DEVELOPER = "Mr.Mouswi";
-const char* APP_NAME  = "PS20KGConv Pro";
+// بصمة المطور المحمية (Hardcoded)
+const char* SIGNATURE = "All Rights Reserved 2026 - Mr.Mouswi";
 
-int main(int argc, const char* argv[]) {
-    // تهيئة شاشة العرض
-    init_screen();
-    
-    printf("****************************************\n");
-    printf("* %s - Version 1.0       *\n", APP_NAME);
-    printf("* Developed by: %s      *\n", DEVELOPER);
-    printf("****************************************\n\n");
+int main() {
+    // عرض شعار ASCII المذكور في المخطط
+    printf("   ____  ____ ___  ____  _____   ______                    \n");
+    printf("  / __ \\/ ___|__ \\/ __ \\|  _  | / ____/___  ____ _   __   \n");
+    printf(" / /_/ /\\___ \\ / / / / / / / / / /   / __ \\/ __ \\ | / /   \n");
+    printf("/ ____/____/ / /_/ /_/ /_/ / / /___/ /_/ / / / / |/ /    \n");
+    printf("/_/    |____/____/\\____/\\___/  \\____/\\____/_/ /_/|___/     \n");
+    printf("\n[By: %s]\n", SIGNATURE);
 
-    printf("[i] Checking for PS2 ISO files in /dev_usb000/PS2ISO/...\n");
-
-    // منطق البحث عن الملفات والتحويل
-    if (check_iso_exists("/dev_usb000/PS2ISO/game.iso")) {
-        printf("[+] ISO Found! Starting Conversion...\n");
-        start_conversion("game.iso");
-    } else {
-        printf("[!] Error: No PS2 ISO found. Please check your USB drive.\n");
+    // فحص المساحة الحرة (نقطة 9 في مخططك)
+    if (check_free_space() < 8) { // 8GB مثلاً
+        printf("Error: Not enough space on /dev_hdd0/\n");
+        return -1;
     }
 
-    // الانتظار قبل الإغلاق
-    wait_for_user();
     return 0;
 }
