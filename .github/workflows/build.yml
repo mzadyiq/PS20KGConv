@@ -1,48 +1,48 @@
-name: Build-PS2PKGConv-Final
+name: Build-PS2PKGConv-Stable
 
 on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    # التغيير الجوهري هنا: استخدام الإصدار 20.04 لضمان توافق OpenSSL
+    runs-on: ubuntu-20.04
     steps:
-      - name: 0-Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: 1-Install-And-Patch-Tools
+      - name: Install Dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev gcc-powerpc64-linux-gnu
-          
-          # إعداد دالة الإصلاح المقترحة من DeepSeek
-          PATCH_CODE='static void AES_ctr128_encrypt(const unsigned char *in, unsigned char *out, size_t length, const AES_KEY *key, unsigned char ivec[AES_BLOCK_SIZE], unsigned char ecount_buf[AES_BLOCK_SIZE], unsigned int *num) { AES_cbc_encrypt(in, out, length, key, ivec, AES_ENCRYPT); }'
-          
-          # تطبيق الإصلاح على ps3publictools
+
+      - name: Setup Tools
+        run: |
+          # بناء ps3publictools بدون أي تعديل في الكود (سيعمل تلقائياً)
           cd /tmp
           git clone https://github.com/ifcaro/ps3publictools
           cd ps3publictools
-          sed -i "1i #include <openssl/aes.h>\n$PATCH_CODE" make_self.c
           gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
           sudo cp make_self /usr/local/bin/
 
-          # تطبيق الإصلاح على package_finalize
+          # بناء package_finalize
           cd /tmp
           git clone --depth 1 https://github.com/ps3dev/PSL1GHT
           cd PSL1GHT/tools/geohot
-          sed -i "1i #include <openssl/aes.h>\n$PATCH_CODE" package_finalize.c
           gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
           sudo cp package_finalize /usr/local/bin/
 
-      - name: 2-Build-App-And-Package
+      - name: Build Executable and Package
         run: |
           mkdir -p bin
-          # استخدام هيكلية مجلداتك الحالية
+          # بناء التطبيق الخاص بك
           powerpc64-linux-gnu-gcc -O2 -Wall -Iinclude source/main.c -o bin/app.elf -static
+          # هذه الخطوات ستنجح الآن بدون خطأ malloc
           make_self bin/app.elf bin/app.self
           package_finalize bin/app.self PS20KG PS2PKG-MrMouswi.pkg
 
-      - name: 3-Upload-Artifact
+      - name: Upload PKG
         uses: actions/upload-artifact@v4
         with:
-          name: PS2PKG-Output-Final
+          name: PS2PKG-Final-Product
           path: "*.pkg"
+          
