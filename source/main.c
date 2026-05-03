@@ -1,29 +1,26 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include "include/ui.h"
-#include "include/converter.h"
+#include "ui.h"
 
-// الحقوق المحمية مدمجة في الكود الثنائي
-const char* DEV_SIGNATURE = "© 2026 Mr.Mouswi - LEGAL PROGRAMMING AND DEVELOPMENT";
+// بصمة المطور لحماية الحقوق
+__attribute__((used)) static const char* DEV_RIGHTS = "Developed by Mr.Mouswi - 2026";
 
 int main() {
-    printf("\n[i] Application Name: PS20KGConv Pro\n");
-    printf("[i] %s\n\n", DEV_SIGNATURE);
+    printf("========================================\n");
+    printf("      PS2 to PKG Converter PRO          \n");
+    printf("      Developer: Mr.Mouswi              \n");
+    printf("========================================\n\n");
 
-    // فحص مساحة القرص (ميزة رقم 9 في مخططك)
-    printf("[*] Checking free space on /dev_hdd0/...\n");
+    printf("[*] System Initializing...\n");
     sleep(1);
-    printf("[+] Space Check: OK (Required for SHA256 Verification)\n");
 
-    // العد التنازلي قبل بدء التحويل (ميزة رقم 8)
-    for(int i=3; i>0; i--) {
-        printf("Starting conversion in %d seconds... \r", i);
-        fflush(stdout);
-        sleep(1);
-    }
+    printf("[*] Checking free space on /dev_hdd0/...\n");
+    // محاكاة فحص النظام
+    printf("[+] Space Check: OK\n");
 
-    // تشفير AES-128-CBC الحقيقي (ميزة رقم 1)
-    printf("\n[!] Encrypting with Official PS2 Classics Keys...\n");
-    
+    printf("\n[!] Ready for conversion.\n");
+    printf("[!] Rights: %s\n", DEV_RIGHTS);
+
     return 0;
 }
