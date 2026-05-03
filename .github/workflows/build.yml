@@ -20,18 +20,22 @@ jobs:
           sudo apt install -y gcc-powerpc64-linux-gnu
           
           cd /tmp
-          wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
-          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
           
-          cd /tmp
+          # build make_self
           rm -rf ps3publictools
           git clone https://github.com/ifcaro/ps3publictools
           cd ps3publictools
+          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w -DOPENSSL_API_COMPAT=10100
+          sudo cp make_self /usr/local/bin/
           
-          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
-          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
+          # build package_finalize from PSL1GHT
+          cd /tmp
+          rm -rf PSL1GHT
+          git clone --depth 1 https://github.com/ps3dev/PSL1GHT
+          cd PSL1GHT/tools/geohot
+          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w -DOPENSSL_API_COMPAT=10100
+          sudo cp package_finalize /usr/local/bin/
           
-          sudo cp make_self package_finalize /usr/local/bin/
           echo "OK: Tools installed"
 
       - name: 2-Build-ELF
