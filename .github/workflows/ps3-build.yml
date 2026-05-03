@@ -9,18 +9,32 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: ps3dev/ps3dev:latest # استخدام بيئة جاهزة ومحدثة
+    # استخدام حاوية ps3dev الرسمية يضمن وجود كل الأدوات مسبقاً
+    container: ps3dev/ps3dev:latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Compile and Package
+      - name: Prepare Environment
         run: |
+          # التأكد من وجود مسارات الأدوات في النظام
+          echo "PS3DEV=/usr/local/ps3dev" >> $GITHUB_ENV
+          echo "PSL1GHT=/usr/local/ps3dev" >> $GITHUB_ENV
+          echo "/usr/local/ps3dev/bin" >> $GITHUB_PATH
+          echo "/usr/local/ps3dev/ppu/bin" >> $GITHUB_PATH
+
+      - name: Compile Application
+        run: |
+          # هذا الأمر سيقوم بتشغيل الـ Makefile الموجود في مستودعك
+          # تأكد من وجود ملف Makefile بجانب كود الـ C
           make
-          
+
       - name: Upload PKG Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: PS3-Application-Package
+          name: PS3-Package-Output
+          # سيقوم برفع أي ملف ينتهي بصيغة .pkg تم إنتاجه
           path: "*.pkg"
+          if-no-files-found: error
           
