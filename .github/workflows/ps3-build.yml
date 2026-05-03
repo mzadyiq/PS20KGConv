@@ -9,16 +9,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # استخدام حاوية ps3dev الرسمية يضمن وجود كل الأدوات مسبقاً
+    # الحاوية الرسمية تظل هي الخيار الأفضل والأساسي
     container: ps3dev/ps3dev:latest
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        # تم التحديث إلى v4
+        uses: actions/checkout@v4
 
       - name: Prepare Environment
         run: |
-          # التأكد من وجود مسارات الأدوات في النظام
           echo "PS3DEV=/usr/local/ps3dev" >> $GITHUB_ENV
           echo "PSL1GHT=/usr/local/ps3dev" >> $GITHUB_ENV
           echo "/usr/local/ps3dev/bin" >> $GITHUB_PATH
@@ -26,16 +26,14 @@ jobs:
 
       - name: Compile Application
         run: |
-          # هذا الأمر سيقوم بتشغيل الـ Makefile الموجود في مستودعك
-          # تأكد من وجود ملف Makefile بجانب كود الـ C
+          # تأكد أن ملف الـ Makefile موجود في المجلد الرئيسي
           make
 
       - name: Upload PKG Artifact
-        uses: actions/upload-artifact@v3
+        # تم التحديث إلى v4 (هذا هو حل الخطأ الظاهر في صورتك)
+        uses: actions/upload-artifact@v4
         with:
           name: PS3-Package-Output
-          # سيقوم برفع أي ملف ينتهي بصيغة .pkg تم إنتاجه
           path: "*.pkg"
           if-no-files-found: error
-
           
