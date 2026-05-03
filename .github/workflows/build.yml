@@ -1,4 +1,4 @@
-name: Build PS2PKGConv PKG
+name: Build PS2PKGConv PKG (Final v2)
 
 on:
   push:
@@ -8,81 +8,112 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
     steps:
-      - name: Checkout code
+      - name: [0/10] Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Build Essentials
+      - name: [1/10] Install System Dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential make git wget
-
-      - name: Install Required Libraries
-        run: |
           sudo apt install -y flex bison texinfo
           sudo apt install -y libelf-dev libssl-dev zlib1g-dev
           sudo apt install -y libgmp-dev libmpfr-dev libmpc-dev
           sudo apt install -y libtool libtool-bin autoconf automake pkg-config
+          echo "[1/10] Dependencies installed successfully"
 
-      - name: Install PS3 SDK
+      - name: [2/10] Clone PS3 Toolchain + Fix config.sub
         run: |
-          export PS3DEV=$HOME/ps3dev
-          export PSL1GHT=$HOME/ps3dev
-          export PATH=$PS3DEV/bin:$PATH
-          mkdir -p $PS3DEV/ppu
           cd ~
-          git clone https://github.com/ps3dev/ps3toolchain
+          git clone https://github.com/ps3dev/ps3toolchain || echo "Already cloned"
           cd ps3toolchain
           for f in depends/check-*.sh; do rm -f "$f"; touch "$f"; chmod +x "$f"; done
           sed -i 's/009-ps3libraries.sh/true/' toolchain.sh
-          bash toolchain.sh
-          echo "PS3DEV=$PS3DEV" >> $GITHUB_ENV
-          echo "PATH=$PS3DEV/bin:$PATH" >> $GITHUB_ENV
+          
+          echo "[2/10] Downloading config.sub and config.guess from GitHub..."
+          wget -q -O config.sub 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.sub' && echo "config.sub OK" || echo "config.sub FAILED"
+          wget -q -O config.guess 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess' && echo "config.guess OK" || echo "config.guess FAILED"
+          cp config.sub config.guess ~/ps3toolchain/
+          echo "[2/10] Toolchain ready"
 
-      - name: Verify PS3 SDK Tools
+      - name: [3/10] Build binutils
         run: |
           export PS3DEV=$HOME/ps3dev
           export PATH=$PS3DEV/bin:$PATH
-          echo "=== Checking PS3 SDK Tools ==="
-          echo ""
-          echo -n "powerpc64-ps3-elf-gcc: "
-          which powerpc64-ps3-elf-gcc && powerpc64-ps3-elf-gcc --version | head -1 || echo "NOT FOUND"
-          echo ""
-          echo -n "make_self: "
-          which make_self && echo "OK" || echo "NOT FOUND"
-          echo ""
-          echo -n "package_finalize: "
-          which package_finalize && echo "OK" || echo "NOT FOUND"
-          echo ""
-          echo -n "ppu-gcc: "
-          which ppu-gcc && echo "OK" || echo "NOT FOUND"
-          echo ""
-          echo "=== SDK Directory ==="
-          ls -la $PS3DEV/bin/ 2>/dev/null | head -10 || echo "No bin directory"
-          echo ""
-          echo "=== All checks passed ==="
+          mkdir -p $PS3DEV/ppu
+          cd ~/ps3toolchain
+          echo "[3/10] Building binutils..."
+          bash scripts/001-binutils-PPU.sh
+          echo "[3/10] binutils completed"
 
-      - name: Build ELF
+      - name: [4/10] Build GCC Stage 1
+        run: |
+          export PS3DEV=$HOME/ps3dev
+          export PATH=$PS3DEV/bin:$PATH
+          cd ~/ps3toolchain
+          echo "[4/10] Building GCC Stage 1..."
+          bash scripts/002-gcc-newlib-PPU.sh
+          echo "[4/10] GCC Stage 1 completed"
+
+      - name: [5/10] Build newlib + GCC Stage 2
+        run: |
+          export PS3DEV=$HOME/ps3dev
+          export PATH=$PS3DEV/bin:$PATH
+          cd ~/ps3toolchain
+          echo "[5/10] Building newlib + GCC Stage 2..."
+          bash scripts/006-gcc-newlib-SPU.sh
+          echo "[5/10] newlib completed"
+
+      - name: [6/10] Build PSL1GHT
+        run: |
+          export PS3DEV=$HOME/ps3dev
+          export PATH=$PS3DEV/bin:$PATH
+          cd ~/ps3toolchain
+          echo "[6/10] Building PSL1GHT..."
+          bash scripts/008-psl1ght.sh
+          echo "[6/10] PSL1GHT completed"
+
+      - name: [7/10] Verify All Tools
+        run: |
+          export PS3DEV=$HOME/ps3dev
+          export PATH=$PS3DEV/bin:$PATH
+          echo "========================================="
+          echo "[7/10] VERIFYING PS3 SDK TOOLS"
+          echo "========================================="
+          echo -n "powerpc64-ps3-elf-gcc: "
+          which powerpc64-ps3-elf-gcc && echo "FOUND" || { echo "NOT FOUND"; exit 1; }
+          echo -n "make_self: "
+          which make_self && echo "FOUND" || { echo "NOT FOUND"; exit 1; }
+          echo -n "package_finalize: "
+          which package_finalize && echo "FOUND" || { echo "NOT FOUND"; exit 1; }
+          echo ""
+          echo "[7/10] All tools verified!"
+
+      - name: [8/10] Build ELF
         run: |
           export PS3DEV=$HOME/ps3dev
           export PATH=$PS3DEV/bin:$PATH
           cd $GITHUB_WORKSPACE
           mkdir -p bin
+          echo "[8/10] Compiling PS2PKGConv..."
           powerpc64-ps3-elf-gcc -O2 -Wall source/main.c -o bin/PS2PKGConv.elf
-          echo "ELF built successfully"
           ls -la bin/PS2PKGConv.elf
+          echo "[8/10] ELF built successfully"
 
-      - name: Sign and Build PKG
+      - name: [9/10] Sign and Build PKG
         run: |
           export PS3DEV=$HOME/ps3dev
           export PATH=$PS3DEV/bin:$PATH
           cd $GITHUB_WORKSPACE
+          echo "[9/10] Signing and building PKG..."
           make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
           package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv.pkg
-          echo "PKG built successfully"
           ls -la PS2PKGConv.pkg
+          echo "[9/10] PKG ready"
 
-      - name: Upload PKG
+      - name: [10/10] Upload PKG
         uses: actions/upload-artifact@v4
         with:
           name: PS2PKGConv-PKG
