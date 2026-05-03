@@ -13,20 +13,23 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
+          # تثبيت المكتبات مع دعم الإصدارات القديمة (Legacy)
           sudo apt-get install -y build-essential git bison flex libelf-dev libssl-dev zlib1g-dev libncurses5-dev autoconf pkg-config
 
-      - name: Setup PS3 Tools
+      - name: Setup PS3 Public Tools
         run: |
-          # سحب وبناء أدوات التشفير والتوقيع
-          git clone https://github.com/danilopiazza/ps3tools.git
-          cd ps3tools
+          # سحب أدوات التوقيع
+          git clone https://github.com/ifcaro/ps3publictools.git
+          cd ps3publictools
+          # تعديل الكود برمجياً لتجاوز مشكلة OpenSSL قبل البناء
+          sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' make_self.c || true
           make
           sudo make install
           cd ..
 
       - name: Build Application
         run: |
-          # تجميع المشروع بناءً على مجلداتك
+          # تنظيف وبناء المشروع
           make clean
           make
 
