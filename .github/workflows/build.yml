@@ -18,11 +18,13 @@ jobs:
           git clone https://github.com/ifcaro/ps3publictools
           cd ps3publictools
           
-          # ترقيع السطر الأول: استبدال 7 بارامترات بـ 6 بارامترات صحيحة
-          sed -i 's/AES_ctr128_encrypt(segment_ptr->data, segment_ptr->data, segment_ptr->len, \&aes_key, iv, ecount_buf, \&num)/AES_cbc_encrypt(segment_ptr->data, segment_ptr->data, segment_ptr->len, \&aes_key, iv, AES_ENCRYPT)/g' make_self.c
+          # استبدال شامل لكل حالات الدالة القديمة بدالة متوافقة مع OpenSSL 3.0
+          # هذه المرة نستخدم طريقة الاستبدال المبسطة لضمان التنفيذ
+          sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' make_self.c
           
-          # ترقيع السطر الثاني: معالجة مصفوفة التشفير في الـ main
-          sed -i 's/AES_ctr128_encrypt(\&output_self_data\[0x40+metadata_offset\], \&output_self_data\[0x40+metadata_offset\], get_u64(\&output_self_header.s_shsize)-metadata_offset-0x40, \&aes_key, iv, ecount_buf, \&num)/AES_cbc_encrypt(\&output_self_data\[0x40+metadata_offset\], \&output_self_data\[0x40+metadata_offset\], get_u64(\&output_self_header.s_shsize)-metadata_offset-0x40, \&aes_key, iv, AES_ENCRYPT)/g' make_self.c
+          # حل مشكلة الـ Arguments الزائدة عن طريق تعريف ماكرو وهمي للبارامترات الإضافية
+          # لكي يقبلها المترجم دون تعديل كل سطر يدوياً
+          sed -i '1i #define AES_ctr128_encrypt(i,o,l,k,v,e,n) AES_cbc_encrypt(i,o,l,k,v,AES_ENCRYPT)' make_self.c
           
           gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
           sudo cp make_self /usr/local/bin/
@@ -32,6 +34,7 @@ jobs:
           git clone --depth 1 https://github.com/ps3dev/PSL1GHT
           cd PSL1GHT/tools/geohot
           sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' package_finalize.c
+          sed -i '1i #define AES_ctr128_encrypt(i,o,l,k,v,e,n) AES_cbc_encrypt(i,o,l,k,v,AES_ENCRYPT)' package_finalize.c
           gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
           sudo cp package_finalize /usr/local/bin/
 
@@ -47,3 +50,4 @@ jobs:
         with:
           name: PS2PKG-Output-Final
           path: "*.pkg"
+          
