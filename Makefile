@@ -38,3 +38,4 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.c
 
 clean:
 	rm -rf $(BUILD_DIR) *.elf *.self *.pkg
+
