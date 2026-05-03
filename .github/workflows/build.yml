@@ -7,8 +7,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 15
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
     steps:
       - name: 0-Checkout
         uses: actions/checkout@v4
@@ -18,6 +18,10 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev
           sudo apt install -y gcc-powerpc64-linux-gnu
+          
+          cd /tmp
+          wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
+          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
           
           cd /tmp
           rm -rf ps3publictools
