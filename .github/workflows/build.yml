@@ -1,4 +1,4 @@
-name: Build PS2PKGConv PKG (Step by Step)
+name: Build PS2PKGConv PKG Final
 
 on:
   push:
@@ -26,9 +26,10 @@ jobs:
           cd ps3toolchain
           for f in depends/check-*.sh; do rm -f "$f"; touch "$f"; chmod +x "$f"; done
           sed -i 's/009-ps3libraries.sh/true/' toolchain.sh
-          wget -q -O config.sub 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.sub'
-          wget -q -O config.guess 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
-          cp config.sub config.guess ~/ps3toolchain/
+          wget -q -O /tmp/config.sub 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.sub'
+          wget -q -O /tmp/config.guess 'https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess'
+          cp /tmp/config.sub ~/ps3toolchain/
+          cp /tmp/config.guess ~/ps3toolchain/
           echo "OK: Toolchain ready"
 
       - name: 3-Build-binutils
