@@ -1,0 +1,47 @@
+name: Build-PS2PKGConv-MrMouswi
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 0-Checkout
+        uses: actions/checkout@v4
+
+      - name: 1-Install-Tools
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git wget libssl-dev zlib1g-dev libgmp-dev gcc-powerpc64-linux-gnu
+          cd /tmp
+          git clone https://github.com/ifcaro/ps3publictools
+          cd ps3publictools
+          sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' make_self.c
+          gcc make_self.c -o make_self -lz -lcrypto -lssl -lgmp -w
+          sudo cp make_self /usr/local/bin/
+          cd /tmp
+          git clone --depth 1 https://github.com/ps3dev/PSL1GHT
+          cd PSL1GHT/tools/geohot
+          sed -i 's/AES_ctr128_encrypt/AES_cbc_encrypt/g' package_finalize.c
+          gcc package_finalize.c -o package_finalize -lcrypto -lssl -w
+          sudo cp package_finalize /usr/local/bin/
+
+      - name: 2-Build-App
+        run: |
+          mkdir -p bin
+          powerpc64-linux-gnu-gcc -O2 -Wall -Iinclude source/main.c -o bin/PS2PKGConv.elf -static
+
+      - name: 3-Package
+        run: |
+          make_self bin/PS2PKGConv.elf bin/PS2PKGConv.self
+          package_finalize bin/PS2PKGConv.self PS2PKGConv-001 PS2PKGConv-MrMouswi.pkg
+
+      - name: 4-Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS2PKGConv-Final
+          path: PS2PKGConv-MrMouswi.pkg
+          
