@@ -9,28 +9,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # الحاوية الرسمية تظل هي الخيار الأفضل والأساسي
-    container: ps3dev/ps3dev:latest
+    # استخدمنا صورة bucanero لأنها موجودة فعلياً وموثوقة جداً
+    container: bucanero/ps3dev:latest
 
     steps:
       - name: Checkout Code
-        # تم التحديث إلى v4
         uses: actions/checkout@v4
-
-      - name: Prepare Environment
-        run: |
-          echo "PS3DEV=/usr/local/ps3dev" >> $GITHUB_ENV
-          echo "PSL1GHT=/usr/local/ps3dev" >> $GITHUB_ENV
-          echo "/usr/local/ps3dev/bin" >> $GITHUB_PATH
-          echo "/usr/local/ps3dev/ppu/bin" >> $GITHUB_PATH
 
       - name: Compile Application
         run: |
-          # تأكد أن ملف الـ Makefile موجود في المجلد الرئيسي
+          # في هذه الحاوية، المسارات مجهزة مسبقاً
+          # سنقوم بتنفيذ أمر البناء مباشرة
           make
 
       - name: Upload PKG Artifact
-        # تم التحديث إلى v4 (هذا هو حل الخطأ الظاهر في صورتك)
         uses: actions/upload-artifact@v4
         with:
           name: PS3-Package-Output
